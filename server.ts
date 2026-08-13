@@ -13,7 +13,18 @@ import { OAuth2Client } from "google-auth-library";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("campus_voice.db");
+const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
+const dbPath = isVercel ? path.join("/tmp", "campus_voice.db") : "campus_voice.db";
+
+if (isVercel && fs.existsSync("campus_voice.db") && !fs.existsSync(dbPath)) {
+  try {
+    fs.copyFileSync("campus_voice.db", dbPath);
+  } catch (e) {
+    console.error("Failed to copy SQLite database to /tmp", e);
+  }
+}
+
+const db = new Database(dbPath);
 const JWT_SECRET = process.env.JWT_SECRET || "campus-voice-secret-key";
 
 // Initialize Database
@@ -98,9 +109,9 @@ app.use(express.json());
 // Multer setup for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = "uploads";
+    const uploadDir = isVercel ? path.join("/tmp", "uploads") : "uploads";
     if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -109,7 +120,11 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-app.use("/uploads", express.static("uploads"));
+const staticUploadsDir = isVercel ? path.join("/tmp", "uploads") : "uploads";
+if (!fs.existsSync(staticUploadsDir)) {
+  fs.mkdirSync(staticUploadsDir, { recursive: true });
+}
+app.use("/uploads", express.static(staticUploadsDir));
 
 // Middleware: Auth
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -396,4 +411,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!isVercel) {
+  startServer();
+}
+
+export default app;
