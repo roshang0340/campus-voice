@@ -31,7 +31,7 @@ export default function AdminDashboard({ user }: { user: User }) {
         axios.get('/api/complaints', { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('/api/analytics', { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      setComplaints(complaintsRes.data);
+      setComplaints(Array.isArray(complaintsRes.data) ? complaintsRes.data : []);
       setAnalytics(analyticsRes.data);
     } catch (err) {
       console.error('Failed to fetch data', err);

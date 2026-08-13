@@ -88,7 +88,7 @@ export default function StudentDashboard({ user }: { user: User }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Filter complaints to ensure only this student's complaints are displayed
-      const studentComplaints = response.data.filter((c: Complaint) => c.student_id === user.id);
+      const studentComplaints = Array.isArray(response.data) ? response.data.filter((c: Complaint) => c.student_id === user?.id) : [];
       setComplaints(studentComplaints);
     } catch (err) {
       console.error('Failed to fetch complaints', err);

@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, Navigate } from 'react-router-dom';
 import { User } from '../types';
 import { LogOut, User as UserIcon, MessageSquare, BarChart3, ShieldCheck } from 'lucide-react';
 
@@ -53,5 +53,3 @@ export default function Layout({ user, onLogout }: LayoutProps) {
     </div>
   );
 }
-
-import { Navigate } from 'react-router-dom';
