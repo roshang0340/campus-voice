@@ -205,47 +205,32 @@ export default function Login({ onLogin }: LoginProps) {
                 <span className="px-2 bg-white text-neutral-500">Or continue with</span>
               </div>
             </div>
-
             <div className="space-y-3">
-              {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-                <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-                  <div className="flex justify-center w-full">
-                    <GoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={() => setError('Google sign-in failed')}
-                      useOneTap
-                      shape="pill"
-                      width="100%"
-                    />
-                  </div>
-                </GoogleOAuthProvider>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleGoogleMockLogin}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-neutral-200 rounded-2xl shadow-sm text-sm font-bold text-neutral-700 bg-white hover:bg-neutral-50 transition-all"
-                >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69a5.74 5.74 0 0 1-2.49 3.77v3.12h4.02c2.34-2.16 3.68-5.32 3.68-8.74Z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-4.02-3.12c-1.12.75-2.54 1.19-3.94 1.19-3.03 0-5.6-2.05-6.52-4.82H1.31v3.2A12 12 0 0 0 12 24Z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.48 14.34a7.22 7.22 0 0 1 0-4.68V6.46H1.31a12 12 0 0 0 0 11.08l4.17-3.2Z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44A12 12 0 0 0 1.31 6.46l4.17 3.2c.92-2.77 3.49-4.91 6.52-4.91Z"
-                    />
-                  </svg>
-                  Sign in with Google (Mock Mode)
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleGoogleMockLogin}
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-neutral-200 rounded-2xl shadow-sm text-sm font-bold text-neutral-700 bg-white hover:bg-neutral-50 transition-all hover:border-neutral-300"
+              >
+                <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69a5.74 5.74 0 0 1-2.49 3.77v3.12h4.02c2.34-2.16 3.68-5.32 3.68-8.74Z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-4.02-3.12c-1.12.75-2.54 1.19-3.94 1.19-3.03 0-5.6-2.05-6.52-4.82H1.31v3.2A12 12 0 0 0 12 24Z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.48 14.34a7.22 7.22 0 0 1 0-4.68V6.46H1.31a12 12 0 0 0 0 11.08l4.17-3.2Z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44A12 12 0 0 0 1.31 6.46l4.17 3.2c.92-2.77 3.49-4.91 6.52-4.91Z"
+                  />
+                </svg>
+                Continue with Google (Instant Login)
+              </button>
             </div>
 
             <div className="mt-8 pt-8 border-t border-neutral-100">
