@@ -23,7 +23,7 @@ export default function Login({ onLogin }: LoginProps) {
     setError('');
     setLoading(true);
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await axios.post('/api/login', { email, password });
       onLogin(response.data.user, response.data.token);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
@@ -36,7 +36,7 @@ export default function Login({ onLogin }: LoginProps) {
     setError('');
     setLoading(true);
     try {
-      const response = await axios.post('/api/auth/google', {
+      const response = await axios.post('/api/google', {
         credential: credentialResponse.credential,
         isMock: false
       });
@@ -57,7 +57,7 @@ export default function Login({ onLogin }: LoginProps) {
         mockId = Math.random().toString(36).substring(2, 7);
         localStorage.setItem('mock_student_id', mockId);
       }
-      const response = await axios.post('/api/auth/google', {
+      const response = await axios.post('/api/google', {
         isMock: true,
         email: `google.mock.student.${mockId}@campusvoice.com`,
         name: `Google Mock Student (${mockId.toUpperCase()})`

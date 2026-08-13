@@ -161,7 +161,7 @@ const authenticateToken = (req: any, res: any, next: any) => {
 };
 
 // API Routes
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/register", (req, res) => {
   const { email, password, name } = req.body;
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -177,7 +177,7 @@ app.post("/api/auth/register", (req, res) => {
   }
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
   const user: any = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (!user || !bcrypt.compareSync(password, user.password)) {
@@ -189,7 +189,7 @@ app.post("/api/auth/login", (req, res) => {
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "");
 
-app.post("/api/auth/google", async (req, res) => {
+app.post("/api/google", async (req, res) => {
   const { credential, isMock, email: mockEmail, name: mockName } = req.body;
 
   try {
@@ -277,7 +277,7 @@ async function sendOTPEmail(email: string, otp: string) {
   }
 }
 
-app.post("/api/auth/forgot-password", async (req, res) => {
+app.post("/api/forgot-password", async (req, res) => {
   const { email } = req.body;
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (!user) {
@@ -293,7 +293,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   res.json({ message: "OTP sent successfully" });
 });
 
-app.post("/api/auth/reset-password", (req, res) => {
+app.post("/api/reset-password", (req, res) => {
   const { email, otp, newPassword } = req.body;
   
   const otpData: any = db.prepare("SELECT * FROM otps WHERE email = ?").get(email);

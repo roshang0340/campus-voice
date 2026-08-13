@@ -19,7 +19,7 @@ export default function ForgotPassword() {
     setError('');
     setLoading(true);
     try {
-      await axios.post('/api/auth/forgot-password', { email });
+      await axios.post('/api/forgot-password', { email });
       setStep('otp');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to send OTP. Please try again.');
@@ -33,7 +33,7 @@ export default function ForgotPassword() {
     setError('');
     setLoading(true);
     try {
-      await axios.post('/api/auth/reset-password', { email, otp, newPassword });
+      await axios.post('/api/reset-password', { email, otp, newPassword });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
