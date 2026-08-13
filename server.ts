@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
@@ -7,6 +8,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { OAuth2Client } from "google-auth-library";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +37,8 @@ db.exec(`
     status TEXT DEFAULT 'Registered', -- 'Registered', 'Under Review', 'Action In Progress', 'Action Taken'
     response TEXT,
     rating INTEGER,
+    is_viewed INTEGER DEFAULT 0,
+    viewed_by TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES users(id)
@@ -46,6 +50,18 @@ db.exec(`
     expires_at DATETIME NOT NULL
   );
 `);
+
+try {
+  db.exec("ALTER TABLE complaints ADD COLUMN is_viewed INTEGER DEFAULT 0");
+} catch (e) {
+  // Column already exists, safe to ignore
+}
+
+try {
+  db.exec("ALTER TABLE complaints ADD COLUMN viewed_by TEXT");
+} catch (e) {
+  // Column already exists, safe to ignore
+}
 
 // Seed Admin if not exists
 const adminExists = db.prepare("SELECT * FROM users WHERE role = 'admin'").get();
@@ -60,7 +76,7 @@ if (!adminExists) {
 }
 
 // Seed some departments if not exists
-const depts = ["Canteen", "Hostel", "Faculty", "Infrastructure", "Maintenance"];
+const depts = ["Canteen", "Hostel", "Faculty", "Infrastructure", "Maintenance", "Other"];
 depts.forEach(dept => {
   const deptEmail = `${dept.toLowerCase()}@campusvoice.com`;
   const exists = db.prepare("SELECT * FROM users WHERE email = ?").get(deptEmail);
@@ -133,6 +149,53 @@ app.post("/api/auth/login", (req, res) => {
   }
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, department: user.department }, JWT_SECRET);
   res.json({ token, user: { id: user.id, email: user.email, role: user.role, department: user.department, name: user.name } });
+});
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "");
+
+app.post("/api/auth/google", async (req, res) => {
+  const { credential, isMock, email: mockEmail, name: mockName } = req.body;
+
+  try {
+    let email: string | undefined;
+    let name: string | undefined;
+
+    if (isMock) {
+      email = mockEmail || "mock.student@campusvoice.com";
+      name = mockName || "Mock Student";
+    } else {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload) return res.status(400).json({ error: "Invalid token" });
+      email = payload.email;
+      name = payload.name;
+    }
+
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    let user: any = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+
+    if (!user) {
+      // Register user automatically as a student
+      const hashedPassword = bcrypt.hashSync(Math.random().toString(36), 10);
+      const info = db.prepare("INSERT INTO users (email, password, role, name) VALUES (?, ?, ?, ?)").run(
+        email,
+        hashedPassword,
+        "student",
+        name || email.split("@")[0]
+      );
+      user = db.prepare("SELECT * FROM users WHERE id = ?").get(info.lastInsertRowid);
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, department: user.department }, JWT_SECRET);
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, department: user.department, name: user.name } });
+  } catch (err: any) {
+    console.error("Google login error", err);
+    res.status(400).json({ error: "Google authentication failed" });
+  }
 });
 
 import nodemailer from "nodemailer";
@@ -227,9 +290,9 @@ app.get("/api/complaints", authenticateToken, (req: any, res) => {
   if (req.user.role === "student") {
     complaints = db.prepare("SELECT * FROM complaints WHERE student_id = ? ORDER BY created_at DESC").all(req.user.id);
   } else if (req.user.role === "institution") {
-    complaints = db.prepare("SELECT * FROM complaints WHERE category = ? ORDER BY created_at DESC").all(req.user.department);
+    complaints = db.prepare("SELECT * FROM complaints WHERE category = ? ORDER BY (response IS NOT NULL AND response != '') ASC, CASE WHEN (response IS NULL OR response = '') THEN created_at END ASC, created_at DESC").all(req.user.department);
   } else if (req.user.role === "admin") {
-    complaints = db.prepare("SELECT * FROM complaints ORDER BY created_at DESC").all();
+    complaints = db.prepare("SELECT * FROM complaints ORDER BY (response IS NOT NULL AND response != '') ASC, CASE WHEN (response IS NULL OR response = '') THEN created_at END ASC, created_at DESC").all();
   }
   res.json(complaints);
 });
@@ -240,7 +303,8 @@ app.patch("/api/complaints/:id", authenticateToken, (req: any, res) => {
 
   if (req.user.role === "institution" || req.user.role === "admin") {
     if (status) {
-      db.prepare("UPDATE complaints SET status = ?, response = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, response, id);
+      const viewerName = req.user.name || (req.user.role === "admin" ? "System Admin" : `${req.user.department || "Institution"} Department`);
+      db.prepare("UPDATE complaints SET status = ?, response = ?, updated_at = CURRENT_TIMESTAMP, is_viewed = 1, viewed_by = COALESCE(viewed_by, ?) WHERE id = ?").run(status, response, viewerName, id);
     }
   } else if (req.user.role === "student") {
     if (rating) {
@@ -248,6 +312,46 @@ app.patch("/api/complaints/:id", authenticateToken, (req: any, res) => {
     }
   }
   res.json({ success: true });
+});
+
+app.patch("/api/complaints/:id/view", authenticateToken, (req: any, res) => {
+  const { id } = req.params;
+  const role = req.user.role;
+
+  if (role === "admin" || role === "institution") {
+    const viewerName = req.user.name || (role === "admin" ? "System Admin" : `${req.user.department || "Institution"} Department`);
+    db.prepare("UPDATE complaints SET is_viewed = 1, viewed_by = COALESCE(viewed_by, ?) WHERE id = ?").run(viewerName, id);
+    res.json({ success: true, viewed_by: viewerName });
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.patch("/api/users/profile", authenticateToken, (req: any, res) => {
+  const { name, currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  try {
+    if (name) {
+      db.prepare("UPDATE users SET name = ? WHERE id = ?").run(name, userId);
+    }
+
+    if (newPassword) {
+      const user: any = db.prepare("SELECT password FROM users WHERE id = ?").get(userId);
+      if (currentPassword && bcrypt.compareSync(currentPassword, user.password)) {
+        const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+        db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedNewPassword, userId);
+      } else {
+        return res.status(400).json({ error: "Invalid current password" });
+      }
+    }
+
+    const updatedUser: any = db.prepare("SELECT id, email, role, department, name FROM users WHERE id = ?").get(userId);
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error("Profile update error", error);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
 });
 
 // Analytics

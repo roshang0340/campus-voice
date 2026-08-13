@@ -40,6 +40,24 @@ export default function AdminDashboard({ user }: { user: User }) {
     }
   };
 
+  const handleSelectComplaint = async (complaint: Complaint) => {
+    setSelectedComplaint(complaint);
+    setStatus(complaint.status as any);
+    setResponse(complaint.response || '');
+
+    if (!complaint.is_viewed) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.patch(`/api/complaints/${complaint.id}/view`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setComplaints(prev => prev.map(c => c.id === complaint.id ? { ...c, is_viewed: 1, viewed_by: res.data.viewed_by } : c));
+      } catch (err) {
+        console.error('Failed to mark complaint as viewed', err);
+      }
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedComplaint) return;
@@ -191,17 +209,20 @@ export default function AdminDashboard({ user }: { user: User }) {
                   complaints.map((c) => (
                     <tr 
                       key={c.id} 
-                      onClick={() => {
-                        setSelectedComplaint(c);
-                        setStatus(c.status as any);
-                        setResponse(c.response || '');
-                      }}
+                      onClick={() => handleSelectComplaint(c)}
                       className={cn(
                         "hover:bg-neutral-50 transition-colors cursor-pointer",
                         selectedComplaint?.id === c.id ? "bg-emerald-50/50" : ""
                       )}
                     >
-                      <td className="px-6 py-4 text-sm font-mono text-neutral-400">#{c.id}</td>
+                      <td className="px-6 py-4 text-sm font-mono text-neutral-400">
+                        <div className="flex items-center gap-1.5">
+                          <span>#{c.id}</span>
+                          {c.is_viewed !== 1 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" title="New/Unread" />
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-sm font-medium text-neutral-900">{c.category}</td>
                       <td className="px-6 py-4">
                         <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider", getPriorityColor(c.priority))}>

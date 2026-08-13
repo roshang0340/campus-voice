@@ -18,6 +18,8 @@ export interface Complaint {
   status: 'Registered' | 'Under Review' | 'Action In Progress' | 'Action Taken';
   response?: string;
   rating?: number;
+  is_viewed?: number;
+  viewed_by?: string;
   created_at: string;
   updated_at: string;
 }

@@ -42,6 +42,24 @@ export default function InstitutionDashboard({ user }: { user: User }) {
     }
   };
 
+  const handleSelectComplaint = async (complaint: Complaint) => {
+    setSelectedComplaint(complaint);
+    setStatus(complaint.status);
+    setResponse(complaint.response || '');
+
+    if (!complaint.is_viewed) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.patch(`/api/complaints/${complaint.id}/view`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setComplaints(prev => prev.map(c => c.id === complaint.id ? { ...c, is_viewed: 1, viewed_by: res.data.viewed_by } : c));
+      } catch (err) {
+        console.error('Failed to mark complaint as viewed', err);
+      }
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedComplaint) return;
@@ -163,11 +181,7 @@ export default function InstitutionDashboard({ user }: { user: User }) {
               <motion.div
                 key={complaint.id}
                 layout
-                onClick={() => {
-                  setSelectedComplaint(complaint);
-                  setStatus(complaint.status);
-                  setResponse(complaint.response || '');
-                }}
+                onClick={() => handleSelectComplaint(complaint)}
                 className={cn(
                   "bg-white p-6 rounded-2xl border transition-all cursor-pointer",
                   selectedComplaint?.id === complaint.id 
@@ -181,6 +195,9 @@ export default function InstitutionDashboard({ user }: { user: User }) {
                       {complaint.priority}
                     </span>
                     <span className="text-xs text-neutral-400">{new Date(complaint.created_at).toLocaleDateString()}</span>
+                    {complaint.is_viewed !== 1 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" title="New/Unread" />
+                    )}
                   </div>
                   <div className={cn(
                     "px-2 py-1 rounded text-[10px] font-bold uppercase",
