@@ -16,11 +16,21 @@ const __dirname = path.dirname(__filename);
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const dbPath = isVercel ? path.join("/tmp", "campus_voice.db") : "campus_voice.db";
 
-if (isVercel && fs.existsSync("campus_voice.db") && !fs.existsSync(dbPath)) {
-  try {
-    fs.copyFileSync("campus_voice.db", dbPath);
-  } catch (e) {
-    console.error("Failed to copy SQLite database to /tmp", e);
+if (isVercel && !fs.existsSync(dbPath)) {
+  const possibleSrcs = [
+    path.join(process.cwd(), "campus_voice.db"),
+    path.join(__dirname, "campus_voice.db"),
+    path.join(__dirname, "..", "campus_voice.db")
+  ];
+  for (const src of possibleSrcs) {
+    if (fs.existsSync(src)) {
+      try {
+        fs.copyFileSync(src, dbPath);
+        break;
+      } catch (e) {
+        console.error("Failed to copy SQLite database to /tmp from", src, e);
+      }
+    }
   }
 }
 
