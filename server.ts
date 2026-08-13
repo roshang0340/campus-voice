@@ -34,7 +34,18 @@ if (isVercel && !fs.existsSync(dbPath)) {
   }
 }
 
-const db = new Database(dbPath);
+let db: any;
+try {
+  db = new Database(dbPath);
+} catch (err) {
+  console.warn("Failed to open SQLite db file, falling back to :memory: SQLite database", err);
+  try {
+    db = new Database(":memory:");
+  } catch (e) {
+    console.error("Could not instantiate Database", e);
+  }
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || "campus-voice-secret-key";
 
 // Initialize Database
